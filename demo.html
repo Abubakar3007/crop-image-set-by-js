@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Crop and Download Image</title>
+	<!-- Google Fonts -->
+	<link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet" />
+	<!-- Cropper -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
+	<!-- Stylesheet -->
+	<style>
+		.full_image,
+		.circle_image {
+			position: relative;
+		}
+
+		.full_image_div {
+			width: 100%;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			position: relative;
+		}
+
+
+		.full_image {
+			height: 200px;
+			border-radius: 5px 5px 0px 0px;
+		}
+
+		.full_image {
+			padding: 16px;
+		}
+
+
+		.full_image>img,
+		.circle_image>img {
+			width: 100%;
+			height: 100%;
+			position: absolute;
+			object-fit: cover;
+		}
+
+		.full_image>img {
+			inset: 0;
+		}
+
+		.circle_image {
+			border-radius: 50%;
+			border: 4px solid #FFF;
+			overflow: hidden;
+			position: absolute;
+			left: 16px;
+			bottom: 0px;
+		}
+
+		.circle_image {
+			width: 120px;
+			height: 120px;
+		}
+
+		.circle_image label,
+		.full_image label {
+			cursor: pointer;
+		}
+
+		.circle_image label input,
+		.full_image label input {
+			display: none;
+		}
+
+
+		.file_select {
+			position: fixed;
+			width: 100%;
+			height: 100dvh;
+			left: 0;
+			top: 0;
+			background-color: rgba(0, 0, 0, 0.50);
+			z-index: 1000;
+			display: none;
+			place-items: center;
+			padding: 12px;
+		}
+
+		.file_btn {
+			position: absolute;
+			bottom: 24px;
+			transform: translate(-50%, 0%);
+			left: 50%;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			max-width: 310px;
+			width: 100%;
+		}
+
+		.file_select.active {
+			display: grid;
+		}
+
+		.file_btn button {
+			flex: 1;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="wrapper">
+		<!-- here user upload background picture -->
+		<div class="full_image" data-image="user-image">
+			<!-- if user upload image then show here -->
+			<div class="flex_align gap-8">
+				<label for="upload">
+					<input type="file" id="upload" class="file-input">
+					<img src="/assets/images/watch_img.png" alt="watch">
+				</label>
+				<button class="delete-img">
+					<img src="/assets/images/delete_img.png" alt="delete"></button>
+			</div>
+		</div>
+		<!-- here user upload profile picture -->
+		<div class="circle_image" data-image="user-image">
+			<div class="flex_align gap-8">
+				<label for="upload2">
+					<input type="file" id="upload2" class="file-input">
+					<img src="/assets/images/watch_img.png" alt="watch">
+				</label>
+				<button class="delete-img"><img src="/assets/images/delete_img.png" alt="delete"></button>
+			</div>
+		</div>
+		<!-- select container -->
+		<div class="file_select">
+			<div>
+				<img src="" alt="" id="select-img">
+			</div>
+			<div class="file_btn">
+				<button class="normal_btn btn_nobg" id="cancel-file">Cancel</button>
+				<button class="normal_btn btn_bg" id="save-file">Save</button>
+			</div>
+		</div>
+	</div>
+	<!-- Script -->
+	<script>
+		document.addEventListener("DOMContentLoaded", () => {
+			const SELECTORS = {
+				fileInput: ".file-input",
+				fileSelect: ".file_select",
+				saveFileButton: "#save-file",
+				cancelFileButton: "#cancel-file",
+				selectedImagesContainer: "#select-img",
+				deleteImgButton: ".delete-img",
+				imageContainer: "[data-image]",
+				imageClass: ".img"
+			};
+
+			const uploadInputs = document.querySelectorAll(SELECTORS.fileInput);
+			const uploadContainer = document.querySelector(SELECTORS.fileSelect);
+			const saveFileButton = uploadContainer.querySelector(SELECTORS.saveFileButton);
+			const cancelFileButton = uploadContainer.querySelector(SELECTORS.cancelFileButton);
+			const selectedImagesContainer = uploadContainer.querySelector(SELECTORS.selectedImagesContainer);
+			const removeImagesButtons = document.querySelectorAll(SELECTORS.deleteImgButton);
+
+			let cropper = null;
+			let fileName = '';
+			let selectedImageContainer = null;
+
+			// Function to initialize Cropper.js instance
+			const initializeCropper = (imageSrc) => {
+				uploadContainer.classList.add("active");
+				selectedImagesContainer.src = imageSrc;
+
+				if (cropper) {
+					cropper.destroy();
+				}
+
+				cropper = new Cropper(selectedImagesContainer);
+			};
+
+			// Function to handle file input change event
+			const handleFileInputChange = async (event) => {
+				selectedImageContainer = event.target.closest("[data-image]");
+				const file = event.target.files[0];
+
+				if (file) {
+					fileName = file.name.split('.')[0];
+					try {
+						const imageSrc = await readFileAsDataURL(file);
+						initializeCropper(imageSrc);
+					} catch (error) {
+						console.error("Error reading file:", error);
+						alert("Error reading file.");
+					}
+					// When user select again then input value clear
+					event.target.value = '';
+				}
+			};
+
+			const readFileAsDataURL = (file) => {
+				return new Promise((resolve, reject) => {
+					const reader = new FileReader();
+					reader.onload = () => resolve(reader.result);
+					reader.onerror = () => reject(reader.error);
+					reader.readAsDataURL(file);
+				});
+			};
+
+			// Function to handle save button click event
+			const handleSaveButtonClick = (event) => {
+				event.preventDefault();
+				if (cropper) {
+					const croppedCanvas = cropper.getCroppedCanvas();
+					if (croppedCanvas) {
+						const croppedImageSrc = croppedCanvas.toDataURL();
+						setCroppedImage(selectedImageContainer, croppedImageSrc);
+						uploadContainer.classList.remove("active");
+					}
+				}
+			};
+
+			// Function to handle cancel button click event
+			const handleCancelButtonClick = () => {
+				uploadContainer.classList.remove("active");
+			};
+
+			// Function to handle delete image button click event
+			const handleDeleteImages = (event) => {
+				const parentContainer = event.target.closest("[data-image]");
+				if (parentContainer) {
+					const image = parentContainer.querySelector(".img");
+					if (image) {
+						parentContainer.removeChild(image);
+					}
+				}
+			};
+
+			// Function to set the cropped image in the DOM
+			const setCroppedImage = (container, src) => {
+				// Remove existing image if present
+				const existingImg = container.querySelector(".img");
+				if (existingImg) {
+					container.removeChild(existingImg);
+				}
+
+				// Create and append new image
+				const img = document.createElement("img");
+				img.src = src;
+				img.classList.add("img");
+				container.insertBefore(img, container.firstChild);
+			};
+
+			// Add event listeners to file inputs with debounce to avoid multiple triggers
+			const debounce = (func, wait) => {
+				let timeout;
+				return (...args) => {
+					clearTimeout(timeout);
+					timeout = setTimeout(() => func.apply(this, args), wait);
+				};
+			};
+
+			uploadInputs.forEach(input => {
+				input.addEventListener('change', debounce(handleFileInputChange, 300));
+			});
+
+			// Add event listener to the save button
+			saveFileButton.addEventListener("click", handleSaveButtonClick);
+
+			// Add event listener to the cancel button
+			cancelFileButton.addEventListener("click", handleCancelButtonClick);
+
+			// Add event listeners to delete image buttons
+			removeImagesButtons.forEach(button => {
+				button.addEventListener("click", handleDeleteImages);
+			});
+		});
+
+	</script>
+
+</body>
+
+</html>
